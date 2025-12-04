@@ -1,16 +1,34 @@
-const hre = require("hardhat");
+// scripts/deploy.js
+const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Deploying contracts...");
-  
-  // Placeholder deployment
-  const Placeholder = await hre.ethers.getContractFactory("Placeholder");
-  const placeholder = await Placeholder.deploy();
-  
-  await placeholder.waitForDeployment();
-  
-  const address = await placeholder.getAddress();
-  console.log("Placeholder deployed to:", address);
+  const [deployer] = await ethers.getSigners();
+
+  console.log("Deploying contracts with address:", deployer.address);
+  console.log(
+    "Deployer balance:",
+    (await ethers.provider.getBalance(deployer.address)).toString()
+  );
+
+  // 1) Deploy ArtistRegistry
+  const Registry = await ethers.getContractFactory("ArtistRegistry");
+  const registry = await Registry.deploy();
+  await registry.waitForDeployment();
+
+  const registryAddress = await registry.getAddress();
+  console.log("ArtistRegistry deployed to:", registryAddress);
+
+  // 2) Deploy BondingCurveMarket with registry address
+  const Market = await ethers.getContractFactory("BondingCurveMarket");
+  const market = await Market.deploy(registryAddress);
+  await market.waitForDeployment();
+
+  const marketAddress = await market.getAddress();
+  console.log("BondingCurveMarket deployed to:", marketAddress);
+
+  console.log("\n=== Deployment Summary ===");
+  console.log(`Registry: ${registryAddress}`);
+  console.log(`Market:   ${marketAddress}`);
 }
 
 main()
@@ -19,4 +37,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-
