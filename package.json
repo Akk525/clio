@@ -1,0 +1,14 @@
+{
+  "name": "clio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "cd web && npm run dev",
+    "dev:contracts": "cd contracts && npx hardhat test --watch",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:contracts\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

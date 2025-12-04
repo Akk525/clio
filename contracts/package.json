@@ -1,0 +1,20 @@
+{
+  "name": "clio-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.3"
+  },
+  "overrides": {
+    "cookie": ">=0.7.0",
+    "tmp": ">=0.2.4"
+  }
+}
+
