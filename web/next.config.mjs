@@ -35,6 +35,22 @@ const nextConfig = {
           protocol: "https",
           hostname: "mir-s3-cdn-cf.behance.net",
         },
+        {
+          protocol: "https",
+          hostname: "i.pinimg.com",
+        },
+        {
+          protocol: "https",
+          hostname: "image.lexica.art",
+        },
+        {
+          protocol: "https",
+          hostname: "cdn.dribbble.com",
+        },
+        {
+          protocol: "https",
+          hostname: "pics.craiyon.com",
+        },
     ],
   },
 };
