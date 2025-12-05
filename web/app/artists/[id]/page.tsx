@@ -3,12 +3,14 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { parseUnits } from "viem";
+import { parseUnits, formatUnits, type Address } from "viem";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from "wagmi";
 import { MOCK_ARTISTS, MOCK_ARTIST_CHART, MOCK_TRADES, type UiArtist } from "@/lib/mockData";
 import { notFound } from "next/navigation";
 import { useBuyArtistTokens, useSellArtistTokens } from "@/hooks/useBuySell";
 import { USDC_ADDRESS, CLIO_MARKET_ADDRESS } from "@/config/contracts";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { DEPLOYED_ARTISTS } from "@/lib/deployedArtists";
 
 export default function ArtistPage({
   params,
@@ -22,6 +24,9 @@ export default function ArtistPage({
     notFound();
   }
 
+  const deployedArtist = DEPLOYED_ARTISTS.find((a) => a.artistId === artistId);
+  const tokenAddress = deployedArtist?.token as Address | undefined;
+
   const chartData = MOCK_ARTIST_CHART[artistId] || [];
   const artistTrades = MOCK_TRADES.filter((t) => t.artistId === artistId).slice(0, 10);
 
@@ -32,6 +37,8 @@ export default function ArtistPage({
   const { address } = useAccount();
   const { buy, isPending: isBuyPending, isSuccess: isBuySuccess, error: buyError, hash: buyHash } = useBuyArtistTokens();
   const { sell, isPending: isSellPending, isSuccess: isSellSuccess, error: sellError, hash: sellHash } = useSellArtistTokens();
+
+  const { balance: tokenBalance } = useTokenBalance({ tokenAddress });
 
   // USDC approve state
   const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, error: approveError } = useWriteContract();
@@ -73,6 +80,14 @@ export default function ArtistPage({
   const estUsdcForBuy = Number(tokenAmount || "0") * artist.currentPrice;
   const estUsdcForSell = Number(tokenAmount || "0") * artist.currentPrice;
 
+  const parsedTokenAmount = useMemo(() => {
+    try {
+      return parseUnits(tokenAmount || "0", 18);
+    } catch {
+      return 0n;
+    }
+  }, [tokenAmount]);
+
   const parsedMaxUsdc = useMemo(() => {
     try {
       return parseUnits(usdcAmount || "0", 6);
@@ -80,6 +95,20 @@ export default function ArtistPage({
       return 0n;
     }
   }, [usdcAmount]);
+
+  const tokenBalanceDisplay = useMemo(() => {
+    if (!tokenBalance) return "0";
+    try {
+      return Number(formatUnits(tokenBalance, 18)).toFixed(4);
+    } catch {
+      return "0";
+    }
+  }, [tokenBalance]);
+
+  const exceedsBalance = useMemo(() => {
+    if (tokenBalance === undefined) return false;
+    return parsedTokenAmount > tokenBalance;
+  }, [parsedTokenAmount, tokenBalance]);
 
   const hasAllowance = useMemo(() => {
     if (!allowance) return false;
@@ -110,7 +139,7 @@ export default function ArtistPage({
   };
 
   const handleBuy = async () => {
-    const tokenAmt = parseUnits(tokenAmount || "0", 18);
+    const tokenAmt = parsedTokenAmount;
     const maxUsdc = parsedMaxUsdc;
     if (!address) return alert("Connect wallet first");
     if (tokenAmt === 0n || maxUsdc === 0n) return alert("Enter token and USDC amounts");
@@ -118,9 +147,13 @@ export default function ArtistPage({
   };
 
   const handleSell = async () => {
-    const tokenAmt = parseUnits(tokenAmount || "0", 18);
+    const tokenAmt = parsedTokenAmount;
     if (!address) return alert("Connect wallet first");
     if (tokenAmt === 0n) return alert("Enter token amount");
+    if (tokenBalance !== undefined && tokenAmt > tokenBalance) {
+      const readable = formatUnits(tokenBalance, 18);
+      return alert(`Amount exceeds your balance (${readable} tokens)`);
+    }
     await sell({ artistId, tokenAmount: tokenAmt, minUsdcOut: 0n });
   };
 
@@ -317,18 +350,28 @@ export default function ArtistPage({
                       type="number"
                       min="0"
                       step="0.1"
+                      max={tokenBalanceDisplay}
                       value={tokenAmount}
                       onChange={(e) => setTokenAmount(e.target.value)}
                       className="w-full px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                       placeholder="0.0"
                     />
                   </div>
-                  <div className="text-sm text-gray-400">
-                    You will receive: <span className="text-cyan-300 font-semibold">~{estUsdcForSell.toFixed(4)} USDC</span>
+                  <div className="text-sm text-gray-400 flex items-center justify-between">
+                    <span>
+                      You will receive: <span className="text-cyan-300 font-semibold">~{estUsdcForSell.toFixed(4)} USDC</span>
+                    </span>
+                    <span>
+                      Available: <span className="text-cyan-300 font-semibold">{tokenBalanceDisplay} tokens</span>
+                    </span>
                   </div>
+                  {exceedsBalance && (
+                    <div className="text-xs text-red-400">Amount exceeds your balance.</div>
+                  )}
                   <button
                     onClick={handleSell}
                     className="w-full py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold rounded-lg hover:from-red-400 hover:to-rose-400 transition-all shadow-lg shadow-red-500/30"
+                    disabled={isSellPending || exceedsBalance || (tokenBalance !== undefined && tokenBalance === 0n)}
                   >
                     {isSellPending ? "Selling..." : "Confirm Sell"}
                   </button>
