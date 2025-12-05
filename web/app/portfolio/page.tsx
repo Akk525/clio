@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { MOCK_PORTFOLIO, MOCK_ARTISTS, type PortfolioPosition, type UiArtist } from "@/lib/mockData";
 
 // Extended position with artist data
@@ -13,7 +14,27 @@ type PositionWithArtist = PortfolioPosition & {
   pnlPercent: number;
 };
 
+/**
+ * DEMO-ONLY: Hardcoded helper to check if user qualifies for Promethean Backer badge.
+ * In production, this would check onchain data or API.
+ * 
+ * Qualification: User owns any amount of The Weeknd's token (artistId: 2)
+ * For demo purposes, we can also short-circuit to always return true.
+ */
+function doesUserQualifyForPrometheanBacker(holdings: PortfolioPosition[]): boolean {
+  // DEMO SHORTCUT: For hackathon demo, always return true so badge always shows
+  // Remove this line and uncomment the logic below to check actual holdings
+  return true;
+  
+  // PRODUCTION LOGIC (commented for demo):
+  // Check if user owns The Weeknd token (artistId: 2)
+  // const hasWeekndToken = holdings.some(position => position.artistId === 2 && position.tokensHeld > 0);
+  // return hasWeekndToken;
+}
+
 export default function PortfolioPage() {
+  const router = useRouter();
+  
   // Combine portfolio positions with artist data
   const positions = useMemo<PositionWithArtist[]>(() => {
     return MOCK_PORTFOLIO.map((position) => {
@@ -34,6 +55,25 @@ export default function PortfolioPage() {
       };
     }).filter((p): p is PositionWithArtist => p !== null);
   }, []);
+
+  // DEMO: Check if user qualifies for Promethean Backer badge
+  const hasPrometheanBacker = useMemo(() => {
+    return doesUserQualifyForPrometheanBacker(MOCK_PORTFOLIO);
+  }, []);
+
+  // DEMO: Show toast notification when badge is unlocked (one-time)
+  const [showBadgeToast, setShowBadgeToast] = useState(false);
+  useEffect(() => {
+    if (hasPrometheanBacker) {
+      // Show toast after a brief delay for better UX
+      const timer = setTimeout(() => {
+        setShowBadgeToast(true);
+        // Auto-hide after 5 seconds
+        setTimeout(() => setShowBadgeToast(false), 5000);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [hasPrometheanBacker]);
 
   // Calculate summary stats
   const summary = useMemo(() => {
@@ -73,9 +113,16 @@ export default function PortfolioPage() {
           <Link href="/artists" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
             ← Back to Artists
           </Link>
-          <div className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-            Clio
-          </div>
+          <Link href="/artists" className="flex items-center">
+            <Image
+              src="/clio-logo.png"
+              alt="Clio"
+              width={100}
+              height={40}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+          </Link>
           <nav className="flex items-center gap-6">
             <Link href="/artists" className="text-sm text-gray-400 hover:text-white transition-colors">
               Artists
@@ -88,6 +135,64 @@ export default function PortfolioPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* DEMO: Badge Unlock Toast Notification */}
+        {showBadgeToast && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top-5 duration-300">
+            <div className="bg-gradient-to-r from-yellow-500/90 to-orange-500/90 backdrop-blur-md border-2 border-yellow-400 rounded-xl p-4 shadow-2xl max-w-md">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🎉</span>
+                <div className="flex-1">
+                  <div className="font-bold text-white mb-1">New Badge Unlocked: Promethean Backer</div>
+                  <div className="text-sm text-yellow-100">
+                    You've unlocked early access to The Weeknd's weekend podcast.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBadgeToast(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DEMO: Promethean Backer Badge & Perk */}
+        {hasPrometheanBacker && (
+          <div className="mb-6">
+            <div className="bg-black/40 border border-yellow-500/30 rounded-xl p-5 backdrop-blur-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/40">
+                      BADGE UNLOCKED
+                    </span>
+                    <span className="text-xs text-gray-400">Promethean Backer</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mb-1">Early Access Podcast</h3>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Unlocked exclusive access to The Weeknd's weekend podcast episode.
+                  </p>
+                  <button
+                    onClick={() => router.push('/demo/weeknd-podcast')}
+                    className="px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-400 text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Listen Now →
+                  </button>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-yellow-400">
+                      <path d="M8 5v14l11-7z" fill="currentColor" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-6 backdrop-blur-sm">
@@ -147,8 +252,17 @@ export default function PortfolioPage() {
                                 className="object-cover"
                               />
                             </div>
-                            <div>
-                              <div className="font-semibold text-sm">{position.artist.name}</div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <div className="font-semibold text-sm">{position.artist.name}</div>
+                                {/* DEMO: Show badge chip for The Weeknd if user has Promethean Backer */}
+                                {hasPrometheanBacker && position.artistId === 2 && (
+                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/50">
+                                    <span className="text-[10px]">👑</span>
+                                    <span className="text-[10px] font-bold text-yellow-400">Promethean Backer</span>
+                                  </div>
+                                )}
+                              </div>
                               <div className="text-xs text-gray-400">@{position.artist.handle}</div>
                             </div>
                           </div>
@@ -217,12 +331,8 @@ export default function PortfolioPage() {
         </div>
 
         {/* Badge Types Showcase */}
-        <div className="bg-black/40 border border-yellow-500/20 rounded-xl p-8 backdrop-blur-sm">
-          <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
-            <span className="text-3xl">🏆</span>
-            Badge Achievements
-          </h2>
-          <p className="text-gray-400 mb-8 text-sm">Earn exclusive badges through your trading activity and show off your achievements</p>
+        <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-6 backdrop-blur-sm">
+          <h2 className="text-lg font-bold mb-4 text-cyan-300">Badge Achievements</h2>
           <BadgeTypesShowcase />
         </div>
       </div>
@@ -233,96 +343,54 @@ export default function PortfolioPage() {
 // Custom Badge Icon Components
 const BadgeIcon = ({ type, color, isActive }: { type: string; color: string; isActive: boolean }) => {
   const commonProps = {
-    className: `transition-all duration-500 ${isActive ? 'animate-pulse' : ''}`,
-    style: { filter: isActive ? `drop-shadow(0 0 8px ${color})` : 'none' }
+    className: `transition-all duration-300`,
+    style: { filter: isActive ? `drop-shadow(0 0 4px ${color})` : 'none' }
   };
 
   switch (type) {
-    case 'PROMETHEAN_BACKER':
+      case 'PROMETHEAN_BACKER':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40" {...commonProps}>
-          <defs>
-            <linearGradient id="crownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fbbf24" />
-              <stop offset="100%" stopColor="#f97316" />
-            </linearGradient>
-          </defs>
-          <path d="M8 30 L12 18 L15 22 L20 12 L25 22 L28 18 L32 30 Z" fill="url(#crownGrad)" stroke={color} strokeWidth="1.5"/>
-          <circle cx="12" cy="18" r="2" fill={color} />
-          <circle cx="20" cy="12" r="2.5" fill={color} />
-          <circle cx="28" cy="18" r="2" fill={color} />
-          <path d="M18 8 Q20 4 22 8 L20 12 Z" fill="#fbbf24" opacity="0.8"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" {...commonProps}>
+          <path d="M5 18 L7 11 L9 13 L12 6 L15 13 L17 11 L19 18 Z" fill={color} opacity="0.9" stroke={color} strokeWidth="1"/>
+          <circle cx="7" cy="11" r="1.5" fill={color} />
+          <circle cx="12" cy="6" r="1.5" fill={color} />
+          <circle cx="17" cy="11" r="1.5" fill={color} />
         </svg>
       );
 
     case 'ORACLE_OF_RISES':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40" {...commonProps}>
-          <defs>
-            <radialGradient id="orbGrad">
-              <stop offset="0%" stopColor="#e879f9" />
-              <stop offset="50%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#7c3aed" />
-            </radialGradient>
-          </defs>
-          <circle cx="20" cy="18" r="10" fill="url(#orbGrad)" opacity="0.8"/>
-          <circle cx="20" cy="18" r="8" fill="none" stroke={color} strokeWidth="1" opacity="0.5"/>
-          <path d="M15 18 Q20 12 25 18" stroke="#e879f9" strokeWidth="1.5" fill="none"/>
-          <path d="M14 30 L26 30 Q28 28 26 26 L14 26 Q12 28 14 30 Z" fill={color} opacity="0.6"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" {...commonProps}>
+          <circle cx="12" cy="11" r="6" fill={color} opacity="0.6"/>
+          <circle cx="12" cy="11" r="4" fill="none" stroke={color} strokeWidth="1" opacity="0.8"/>
+          <path d="M9 11 Q12 7 15 11" stroke={color} strokeWidth="1.5" fill="none"/>
         </svg>
       );
 
     case 'NEREID_NAVIGATOR':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40" {...commonProps}>
-          <defs>
-            <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#22d3ee" />
-              <stop offset="100%" stopColor="#06b6d4" />
-            </linearGradient>
-          </defs>
-          <path d="M5 20 Q10 10 15 20 T25 20 T35 20" stroke="url(#waveGrad)" strokeWidth="2" fill="none"/>
-          <path d="M5 25 Q10 18 15 25 T25 25 T35 25" stroke={color} strokeWidth="2" fill="none" opacity="0.7"/>
-          <path d="M5 30 Q10 24 15 30 T25 30 T35 30" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5"/>
-          <circle cx="15" cy="15" r="1.5" fill="#22d3ee"/>
-          <circle cx="25" cy="15" r="2" fill="#22d3ee"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" {...commonProps}>
+          <path d="M3 12 Q6 6 9 12 T15 12 T21 12" stroke={color} strokeWidth="2" fill="none"/>
+          <path d="M3 15 Q6 11 9 15 T15 15 T21 15" stroke={color} strokeWidth="1.5" fill="none" opacity="0.7"/>
         </svg>
       );
 
     case 'MUSE_WANDERER':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40" {...commonProps}>
-          <defs>
-            <linearGradient id="noteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ec4899" />
-              <stop offset="100%" stopColor="#a855f7" />
-            </linearGradient>
-          </defs>
-          <circle cx="15" cy="25" r="3" fill="url(#noteGrad)"/>
-          <rect x="17" y="12" width="2" height="13" fill={color}/>
-          <path d="M19 12 Q25 10 25 16" stroke={color} strokeWidth="2" fill="none"/>
-          <circle cx="25" cy="22" r="2.5" fill="url(#noteGrad)"/>
-          <rect x="27" y="14" width="2" height="8" fill={color}/>
-          <circle cx="10" cy="15" r="1" fill="#ec4899"/>
-          <circle cx="30" cy="18" r="1" fill="#ec4899"/>
-          <line x1="15" y1="25" x2="25" y2="22" stroke={color} strokeWidth="0.5" opacity="0.3"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" {...commonProps}>
+          <circle cx="9" cy="15" r="2" fill={color} opacity="0.8"/>
+          <rect x="10" y="7" width="1.5" height="8" fill={color}/>
+          <path d="M11.5 7 Q15 6 15 10" stroke={color} strokeWidth="1.5" fill="none"/>
+          <circle cx="15" cy="13" r="1.5" fill={color} opacity="0.8"/>
         </svg>
       );
 
     case 'TITAN_OF_SUPPORT':
       return (
-        <svg width="40" height="40" viewBox="0 0 40 40" {...commonProps}>
-          <defs>
-            <linearGradient id="titanGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="#059669" />
-              <stop offset="100%" stopColor="#10b981" />
-            </linearGradient>
-          </defs>
-          <path d="M12 32 L20 8 L28 32 Z" fill="url(#titanGrad)" opacity="0.8"/>
-          <path d="M15 32 L20 15 L25 32 Z" fill={color} opacity="0.6"/>
-          <rect x="18" y="22" width="4" height="10" fill={color} opacity="0.9"/>
-          <polygon points="20,8 22,12 18,12" fill="#10b981"/>
-          <circle cx="20" cy="8" r="2" fill="#34d399" opacity="0.8"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" {...commonProps}>
+          <path d="M7 19 L12 4 L17 19 Z" fill={color} opacity="0.7"/>
+          <path d="M9 19 L12 9 L15 19 Z" fill={color} opacity="0.5"/>
+          <rect x="11" y="13" width="2" height="6" fill={color} opacity="0.8"/>
         </svg>
       );
 
@@ -331,274 +399,77 @@ const BadgeIcon = ({ type, color, isActive }: { type: string; color: string; isA
   }
 };
 
-// Badge Types Showcase Component - Exciting Achievement Gallery
+// Badge Types Showcase Component - Compact Grid
 function BadgeTypesShowcase() {
-  const [selectedBadge, setSelectedBadge] = useState<number>(0);
-
   const badgeTypes = [
     {
       id: 'PROMETHEAN_BACKER',
       name: 'Promethean Backer',
       shortDesc: 'First 5 holders',
-      description: 'Be among the first 5 believers in an artist. The earliest supporters who saw the potential before anyone else.',
       rarity: 'Legendary',
-      rarityScore: 99,
       color: '#fbbf24',
-      holders: '< 50',
-      difficulty: 'Extreme',
-      tip: 'Watch for new artist launches and be quick!',
     },
     {
       id: 'ORACLE_OF_RISES',
       name: 'Oracle of Rises',
       shortDesc: 'Early to 200+',
-      description: 'Backed an artist early (top 50 holders) who later reached 200+ total holders. You predicted greatness.',
       rarity: 'Epic',
-      rarityScore: 85,
       color: '#a855f7',
-      holders: '~200',
-      difficulty: 'Hard',
-      tip: 'Find artists with momentum in their first 50 holders',
     },
     {
       id: 'NEREID_NAVIGATOR',
       name: 'Nereid Navigator',
       shortDesc: 'Buy the dip',
-      description: 'Bought during a 15%+ price dip. Master of market timing and conviction in downturns.',
       rarity: 'Rare',
-      rarityScore: 70,
       color: '#06b6d4',
-      holders: '~500',
-      difficulty: 'Medium',
-      tip: 'Watch the charts and buy when others panic',
     },
     {
       id: 'MUSE_WANDERER',
       name: 'Muse Wanderer',
       shortDesc: '8+ genres',
-      description: 'Support artists across 8+ different genres. True music connoisseur with diverse taste.',
       rarity: 'Epic',
-      rarityScore: 82,
       color: '#ec4899',
-      holders: '~300',
-      difficulty: 'Hard',
-      tip: 'Explore all genres - diversity is key',
     },
     {
       id: 'TITAN_OF_SUPPORT',
       name: 'Titan of Support',
       shortDesc: '1%+ supply',
-      description: 'Acquired 1%+ of an artist\'s total supply in a single buy. Whale status achieved.',
       rarity: 'Rare',
-      rarityScore: 75,
       color: '#10b981',
-      holders: '~400',
-      difficulty: 'Medium',
-      tip: 'Go big on your favorite artists',
     },
   ];
 
-  const currentBadge = badgeTypes[selectedBadge];
-
   return (
-    <div>
-      {/* Main Spotlight */}
-      <div className="grid lg:grid-cols-2 gap-8 mb-8">
-        {/* Left: Featured Badge */}
-        <div className="relative">
-          <div className="sticky top-24">
-            <div className="relative bg-gradient-to-br from-black/80 to-black/40 rounded-3xl p-8 border-2 overflow-hidden"
-              style={{ borderColor: currentBadge.color }}
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {badgeTypes.map((badge) => (
+        <div
+          key={badge.id}
+          className="bg-black/30 border border-cyan-500/20 rounded-lg p-3 hover:border-cyan-500/40 transition-colors"
+        >
+          <div className="flex flex-col items-center text-center">
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center mb-2"
+              style={{
+                background: `linear-gradient(135deg, ${badge.color}20, ${badge.color}10)`,
+                border: `1px solid ${badge.color}40`,
+              }}
             >
-              {/* Animated background */}
-              <div className="absolute inset-0 opacity-20"
-                style={{
-                  background: `radial-gradient(circle at 30% 50%, ${currentBadge.color}40, transparent 70%)`,
-                  animation: 'pulseGlow 3s ease-in-out infinite'
-                }}
-              />
-
-              {/* Content */}
-              <div className="relative z-10">
-                {/* Badge Icon - Large */}
-                <div className="flex justify-center mb-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full blur-3xl animate-pulse"
-                      style={{ backgroundColor: currentBadge.color, opacity: 0.6 }}
-                    />
-                    <div 
-                      className="relative w-32 h-32 rounded-full flex items-center justify-center"
-                      style={{
-                        background: `radial-gradient(circle, ${currentBadge.color}40, ${currentBadge.color}10)`,
-                        border: `3px solid ${currentBadge.color}`,
-                        boxShadow: `0 0 40px ${currentBadge.color}80`,
-                      }}
-                    >
-                      <BadgeIcon type={currentBadge.id} color={currentBadge.color} isActive={true} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Badge Name & Rarity */}
-                <div className="text-center mb-6">
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <div 
-                      className="px-4 py-1.5 rounded-full text-xs font-black border-2"
-                      style={{
-                        backgroundColor: currentBadge.color,
-                        color: '#000',
-                        borderColor: currentBadge.color,
-                      }}
-                    >
-                      {currentBadge.rarity.toUpperCase()}
-                    </div>
-                    <div className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 text-white border border-white/20">
-                      {currentBadge.holders} holders
-                    </div>
-                  </div>
-                  <h3 className="text-3xl font-black mb-2" style={{ color: currentBadge.color }}>
-                    {currentBadge.name}
-                  </h3>
-                  <p className="text-gray-300 text-lg mb-4">{currentBadge.description}</p>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-black/40 rounded-xl p-4 border border-white/10">
-                    <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Rarity Score</div>
-                    <div className="text-2xl font-black" style={{ color: currentBadge.color }}>
-                      {currentBadge.rarityScore}
-                      <span className="text-sm text-gray-400">/100</span>
-                    </div>
-                  </div>
-                  <div className="bg-black/40 rounded-xl p-4 border border-white/10">
-                    <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Difficulty</div>
-                    <div className="text-2xl font-black" style={{ color: currentBadge.color }}>
-                      {currentBadge.difficulty}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pro Tip */}
-                <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">💡</span>
-                    <div>
-                      <div className="text-xs font-bold text-cyan-300 mb-1">PRO TIP</div>
-                      <p className="text-sm text-gray-300">{currentBadge.tip}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <BadgeIcon type={badge.id} color={badge.color} isActive={false} />
             </div>
+            <div className="text-xs font-semibold text-white mb-1">{badge.name}</div>
+            <div 
+              className="text-[10px] px-1.5 py-0.5 rounded mb-1"
+              style={{
+                backgroundColor: `${badge.color}20`,
+                color: badge.color,
+              }}
+            >
+              {badge.rarity}
+            </div>
+            <div className="text-[10px] text-gray-400">{badge.shortDesc}</div>
           </div>
         </div>
-
-        {/* Right: Badge Selector Grid */}
-        <div>
-          <div className="space-y-4">
-            {badgeTypes.map((badge, idx) => {
-              const isSelected = selectedBadge === idx;
-              
-              return (
-                <div
-                  key={badge.id}
-                  className={`group relative cursor-pointer transition-all duration-300 ${
-                    isSelected ? 'scale-105' : 'hover:scale-102'
-                  }`}
-                  onClick={() => setSelectedBadge(idx)}
-                  style={{
-                    animation: 'slideInRight 0.6s ease-out forwards',
-                    animationDelay: `${idx * 100}ms`,
-                    opacity: 0,
-                  }}
-                >
-                  {/* Glow on selected */}
-                  <div 
-                    className="absolute -inset-1 rounded-2xl blur-xl transition-opacity duration-500"
-                    style={{
-                      backgroundColor: badge.color,
-                      opacity: isSelected ? 0.5 : 0,
-                    }}
-                  />
-
-                  <div 
-                    className={`relative bg-gradient-to-br from-black/60 to-black/40 rounded-2xl p-5 border-2 transition-all duration-300 ${
-                      isSelected ? 'border-opacity-100' : 'border-opacity-20 hover:border-opacity-40'
-                    }`}
-                    style={{ borderColor: badge.color }}
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Icon */}
-                      <div 
-                        className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300"
-                        style={{
-                          background: `radial-gradient(circle, ${badge.color}30, ${badge.color}10)`,
-                          border: `2px solid ${badge.color}`,
-                          transform: isSelected ? 'scale(1.1)' : 'scale(1)',
-                        }}
-                      >
-                        <BadgeIcon type={badge.id} color={badge.color} isActive={isSelected} />
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-base font-black text-white truncate">{badge.name}</h4>
-                          <div 
-                            className="px-2 py-0.5 rounded text-[10px] font-black"
-                            style={{
-                              backgroundColor: `${badge.color}30`,
-                              color: badge.color,
-                            }}
-                          >
-                            {badge.rarity}
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-400 mb-2">{badge.shortDesc}</p>
-                        
-                        {/* Progress bar */}
-                        <div className="h-1.5 bg-black/50 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${badge.rarityScore}%`,
-                              backgroundColor: badge.color,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <div className={`transition-all duration-300 ${isSelected ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}>
-                        <div className="text-2xl" style={{ color: badge.color }}>→</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.3; transform: scale(1.05); }
-        }
-
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-      `}</style>
+      ))}
     </div>
   );
 }
