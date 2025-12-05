@@ -39,6 +39,18 @@ const nextConfig = {
           protocol: "https",
           hostname: "i.pinimg.com",
         },
+        {
+          protocol: "https",
+          hostname: "image.lexica.art",
+        },
+        {
+          protocol: "https",
+          hostname: "cdn.dribbble.com",
+        },
+        {
+          protocol: "https",
+          hostname: "pics.craiyon.com",
+        },
     ],
   },
 };
