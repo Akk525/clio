@@ -79,7 +79,7 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
               <div className="flex flex-wrap gap-4 text-sm sm:text-base">
                 <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
                   <span className="text-gray-400">Price</span>
-                  <p className="text-white font-bold">Ξ {artist.currentPrice.toFixed(3)}</p>
+                  <p className="text-white font-bold">USDC {artist.currentPrice.toFixed(3)}</p>
                 </div>
                 <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
                   <span className="text-gray-400">24h</span>
@@ -89,7 +89,7 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
                 </div>
                 <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
                   <span className="text-gray-400">Volume</span>
-                  <p className="text-white font-bold">Ξ {artist.volume24h.toFixed(1)}</p>
+                  <p className="text-white font-bold">USDC {artist.volume24h.toFixed(1)}</p>
                 </div>
               </div>
 
@@ -139,13 +139,13 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
           {/* Metrics row */}
           <div className="flex items-center gap-3 text-xs pt-1">
             <span className="text-white font-medium">
-              Ξ {artist.currentPrice.toFixed(3)}
+              USDC {artist.currentPrice.toFixed(3)}
             </span>
             <span className={`font-semibold ${artist.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {artist.change24h >= 0 ? '+' : ''}{artist.change24h.toFixed(1)}%
             </span>
             <span className="text-gray-400">
-              Vol: {artist.volume24h.toFixed(1)} Ξ
+              Vol: {artist.volume24h.toFixed(1)} USDC
             </span>
           </div>
         </div>
@@ -253,7 +253,7 @@ export default function ArtistsPage() {
 
     return [
       { label: 'Artists Live', value: `${MOCK_ARTISTS.length}`, hint: 'Ready to trade now' },
-      { label: '24h Volume', value: `Ξ ${totalVolume.toFixed(1)}`, hint: 'Combined secondary flow' },
+      { label: '24h Volume', value: `USDC ${totalVolume.toFixed(1)}`, hint: 'Combined secondary flow' },
       { label: 'Avg. Move', value: `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(1)}%`, hint: 'Net change across markets' },
       { label: 'Top Mover', value: hottest ? hottest.name : '—', hint: hottest ? `${hottest.change24h.toFixed(1)}% today` : 'Waiting for listings' },
     ];

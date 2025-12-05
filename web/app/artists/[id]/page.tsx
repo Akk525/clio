@@ -3,8 +3,12 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { parseUnits } from "viem";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from "wagmi";
 import { MOCK_ARTISTS, MOCK_ARTIST_CHART, MOCK_TRADES, type UiArtist } from "@/lib/mockData";
 import { notFound } from "next/navigation";
+import { useBuyArtistTokens, useSellArtistTokens } from "@/hooks/useBuySell";
+import { USDC_ADDRESS, CLIO_MARKET_ADDRESS } from "@/config/contracts";
 
 export default function ArtistPage({
   params,
@@ -22,8 +26,41 @@ export default function ArtistPage({
   const artistTrades = MOCK_TRADES.filter((t) => t.artistId === artistId).slice(0, 10);
 
   const [tab, setTab] = useState<"buy" | "sell">("buy");
-  const [ethAmount, setEthAmount] = useState("0.01");
-  const [tokenAmount, setTokenAmount] = useState("100");
+  const [usdcAmount, setUsdcAmount] = useState("10");
+  const [tokenAmount, setTokenAmount] = useState("1");
+
+  const { address } = useAccount();
+  const { buy, isPending: isBuyPending, isSuccess: isBuySuccess, error: buyError, hash: buyHash } = useBuyArtistTokens();
+  const { sell, isPending: isSellPending, isSuccess: isSellSuccess, error: sellError, hash: sellHash } = useSellArtistTokens();
+
+  // USDC approve state
+  const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, error: approveError } = useWriteContract();
+
+  const { data: allowance } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: [
+      {
+        inputs: [
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "address", name: "spender", type: "address" },
+        ],
+        name: "allowance",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "allowance",
+    args: address ? [address, CLIO_MARKET_ADDRESS] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const { isSuccess: isApproveSuccess, isLoading: isApproveConfirming } = useWaitForTransactionReceipt({
+    hash: approveHash,
+    query: {
+      enabled: !!approveHash,
+    },
+  });
 
   // Dummy position data
   const userPosition = {
@@ -33,15 +70,58 @@ export default function ArtistPage({
     pnl: ((artist.currentPrice - 0.035) / 0.035) * 100,
   };
 
-  const estTokensForBuy = Number(ethAmount || "0") / artist.currentPrice;
-  const estEthForSell = Number(tokenAmount || "0") * artist.currentPrice;
+  const estUsdcForBuy = Number(tokenAmount || "0") * artist.currentPrice;
+  const estUsdcForSell = Number(tokenAmount || "0") * artist.currentPrice;
 
-  const handleConfirm = () => {
-    const message = tab === "buy" 
-      ? `Simulated buy: ${estTokensForBuy.toFixed(2)} tokens for ${ethAmount} ETH`
-      : `Simulated sell: ${tokenAmount} tokens for ${estEthForSell.toFixed(4)} ETH`;
-    
-    alert(message);
+  const parsedMaxUsdc = useMemo(() => {
+    try {
+      return parseUnits(usdcAmount || "0", 6);
+    } catch {
+      return 0n;
+    }
+  }, [usdcAmount]);
+
+  const hasAllowance = useMemo(() => {
+    if (!allowance) return false;
+    return allowance >= parsedMaxUsdc && parsedMaxUsdc > 0n;
+  }, [allowance, parsedMaxUsdc]);
+
+  const handleApprove = () => {
+    if (!address) return alert("Connect wallet first");
+    const amount = parsedMaxUsdc;
+    if (amount === 0n) return alert("Enter USDC amount to approve");
+    writeApprove({
+      address: USDC_ADDRESS,
+      abi: [
+        {
+          inputs: [
+            { internalType: "address", name: "spender", type: "address" },
+            { internalType: "uint256", name: "amount", type: "uint256" },
+          ],
+          name: "approve",
+          outputs: [{ internalType: "bool", name: "", type: "bool" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ] as const,
+      functionName: "approve",
+      args: [CLIO_MARKET_ADDRESS, amount],
+    });
+  };
+
+  const handleBuy = async () => {
+    const tokenAmt = parseUnits(tokenAmount || "0", 18);
+    const maxUsdc = parsedMaxUsdc;
+    if (!address) return alert("Connect wallet first");
+    if (tokenAmt === 0n || maxUsdc === 0n) return alert("Enter token and USDC amounts");
+    await buy({ artistId, tokenAmount: tokenAmt, maxUsdcIn: maxUsdc });
+  };
+
+  const handleSell = async () => {
+    const tokenAmt = parseUnits(tokenAmount || "0", 18);
+    if (!address) return alert("Connect wallet first");
+    if (tokenAmt === 0n) return alert("Enter token amount");
+    await sell({ artistId, tokenAmount: tokenAmt, minUsdcOut: 0n });
   };
 
   const formatTimeAgo = (timestamp: number) => {
@@ -88,12 +168,6 @@ export default function ArtistPage({
               <button className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-lg text-cyan-300 hover:bg-cyan-500/30 transition-colors text-sm">
                 Twitter
               </button>
-              <button className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-lg text-cyan-300 hover:bg-cyan-500/30 transition-colors text-sm">
-                Discord
-              </button>
-              <button className="px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-lg text-cyan-300 hover:bg-cyan-500/30 transition-colors text-sm">
-                Website
-              </button>
             </div>
           </div>
         </div>
@@ -116,7 +190,7 @@ export default function ArtistPage({
             <div className="space-y-4">
               <div>
                 <div className="text-xs text-gray-400 mb-1">Current Price</div>
-                <div className="text-2xl font-bold">Ξ {artist.currentPrice.toFixed(4)}</div>
+                <div className="text-2xl font-bold">USDC {artist.currentPrice.toFixed(4)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">24h Change</div>
@@ -126,15 +200,15 @@ export default function ArtistPage({
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">24h Volume</div>
-                <div className="text-lg font-semibold">Ξ {artist.volume24h.toFixed(2)}</div>
+                <div className="text-lg font-semibold">USDC {artist.volume24h.toFixed(2)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Market Cap</div>
-                <div className="text-lg font-semibold">Ξ {artist.marketCap.toFixed(0)}</div>
+                <div className="text-lg font-semibold">USDC {artist.marketCap.toFixed(0)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Pool Size</div>
-                <div className="text-lg font-semibold">Ξ {artist.poolSize.toFixed(2)}</div>
+                <div className="text-lg font-semibold">USDC {artist.poolSize.toFixed(2)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Holders</div>
@@ -177,27 +251,63 @@ export default function ArtistPage({
 
               {tab === "buy" ? (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">Amount (ETH)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      value={ethAmount}
-                      onChange={(e) => setEthAmount(e.target.value)}
-                      className="w-full px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                      placeholder="0.0"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Tokens to buy</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={tokenAmount}
+                        onChange={(e) => setTokenAmount(e.target.value)}
+                        className="w-full px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        placeholder="0.0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Max USDC (slippage)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={usdcAmount}
+                        onChange={(e) => setUsdcAmount(e.target.value)}
+                        className="w-full px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        placeholder="0.0"
+                      />
+                    </div>
                   </div>
                   <div className="text-sm text-gray-400">
-                    You will receive: <span className="text-cyan-300 font-semibold">~{estTokensForBuy.toFixed(2)} tokens</span>
+                    Est. cost at current price: <span className="text-cyan-300 font-semibold">~USDC {estUsdcForBuy.toFixed(4)}</span>
                   </div>
-                  <button
-                    onClick={handleConfirm}
-                    className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold rounded-lg hover:from-green-400 hover:to-emerald-400 transition-all shadow-lg shadow-green-500/30"
-                  >
-                    Confirm Buy
-                  </button>
+                  <div className="flex gap-2">
+                    {!hasAllowance && (
+                      <button
+                        onClick={handleApprove}
+                        className="flex-1 py-3 bg-cyan-500/20 border border-cyan-400/50 text-cyan-200 font-semibold rounded-lg hover:bg-cyan-500/30 transition-all"
+                        disabled={isApprovePending || isApproveConfirming}
+                      >
+                        {isApprovePending || isApproveConfirming ? "Approving..." : "Approve USDC"}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleBuy}
+                      className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold rounded-lg hover:from-green-400 hover:to-emerald-400 transition-all shadow-lg shadow-green-500/30"
+                      disabled={isBuyPending}
+                    >
+                      {isBuyPending ? "Buying..." : "Confirm Buy"}
+                    </button>
+                  </div>
+                  {(approveError || buyError) && (
+                    <div className="text-xs text-red-400 mt-2">
+                      {(approveError as Error)?.message || (buyError as Error)?.message}
+                    </div>
+                  )}
+                  {(isApproveSuccess || buyHash) && (
+                    <div className="text-xs text-cyan-300 mt-1">
+                      {isApproveSuccess && "USDC approved."} {buyHash && `Tx: ${buyHash}`}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -214,14 +324,20 @@ export default function ArtistPage({
                     />
                   </div>
                   <div className="text-sm text-gray-400">
-                    You will receive: <span className="text-cyan-300 font-semibold">~{estEthForSell.toFixed(4)} Ξ</span>
+                    You will receive: <span className="text-cyan-300 font-semibold">~{estUsdcForSell.toFixed(4)} USDC</span>
                   </div>
                   <button
-                    onClick={handleConfirm}
+                    onClick={handleSell}
                     className="w-full py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold rounded-lg hover:from-red-400 hover:to-rose-400 transition-all shadow-lg shadow-red-500/30"
                   >
-                    Confirm Sell
+                    {isSellPending ? "Selling..." : "Confirm Sell"}
                   </button>
+                  {sellError && (
+                    <div className="text-xs text-red-400 mt-2">{(sellError as Error).message}</div>
+                  )}
+                  {sellHash && (
+                    <div className="text-xs text-cyan-300 mt-1">Tx: {sellHash}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -237,11 +353,11 @@ export default function ArtistPage({
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Avg. Entry Price</div>
-                <div className="text-lg font-semibold">Ξ {userPosition.avgPrice.toFixed(4)}</div>
+                <div className="text-lg font-semibold">USDC {userPosition.avgPrice.toFixed(4)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Current Value</div>
-                <div className="text-lg font-semibold">Ξ {userPosition.currentValue.toFixed(2)}</div>
+                <div className="text-lg font-semibold">USDC {userPosition.currentValue.toFixed(2)}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-400 mb-1">Unrealized PnL</div>
@@ -262,8 +378,8 @@ export default function ArtistPage({
                 <tr className="text-xs text-gray-400 border-b border-cyan-500/20">
                   <th className="text-left py-3 px-2">Type</th>
                   <th className="text-left py-3 px-2">Amount</th>
-                  <th className="text-left py-3 px-2">Price</th>
-                  <th className="text-left py-3 px-2">Value</th>
+                  <th className="text-left py-3 px-2">Price (USDC)</th>
+                  <th className="text-left py-3 px-2">Value (USDC)</th>
                   <th className="text-left py-3 px-2">User</th>
                   <th className="text-left py-3 px-2">Time</th>
                 </tr>
@@ -281,8 +397,8 @@ export default function ArtistPage({
                       </span>
                     </td>
                     <td className="py-3 px-2 text-sm">{trade.amount.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-sm">Ξ {trade.price.toFixed(4)}</td>
-                    <td className="py-3 px-2 text-sm">Ξ {trade.ethAmount.toFixed(3)}</td>
+                    <td className="py-3 px-2 text-sm">USDC {trade.price.toFixed(4)}</td>
+                    <td className="py-3 px-2 text-sm">USDC {trade.ethAmount.toFixed(3)}</td>
                     <td className="py-3 px-2 text-xs text-gray-400 font-mono">{trade.user}</td>
                     <td className="py-3 px-2 text-xs text-gray-500">{formatTimeAgo(trade.timestamp)}</td>
                   </tr>
@@ -292,6 +408,18 @@ export default function ArtistPage({
           </div>
         </div>
       </div>
+
+      {(isBuySuccess || isSellSuccess) && (
+        <div className="fixed bottom-4 right-4 z-50 bg-black/90 border border-cyan-500/40 text-white px-4 py-3 rounded-lg shadow-lg shadow-cyan-500/30 max-w-sm">
+          <div className="text-sm font-semibold">
+            {isBuySuccess ? "Buy successful" : "Sell successful"}
+          </div>
+          <div className="text-xs text-gray-300 mt-1">
+            {buyHash && isBuySuccess && `Tx: ${buyHash}`}
+            {sellHash && isSellSuccess && `Tx: ${sellHash}`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,8 +2,8 @@
 // Ready-to-use hooks for buy/sell operations using wagmi v2
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
-import { parseEther, formatEther } from "viem";
-import { bondingCurveMarketConfig } from "@/config/contracts";
+import { parseUnits } from "viem";
+import { clioMarketConfig } from "@/config/contracts";
 
 /**
  * Hook for buying artist tokens
@@ -15,8 +15,8 @@ import { bondingCurveMarketConfig } from "@/config/contracts";
  * const handleBuy = async () => {
  *   await buy({
  *     artistId: 1,
- *     ethAmount: "0.01", // as string
- *     minTokensOut: 0n, // optional slippage
+ *     tokenAmount: parseUnits("100", 18), // tokens to receive
+ *     maxUsdcIn: parseUnits("10", 6),      // slippage guard in USDC
  *   });
  * };
  * ```
@@ -30,21 +30,17 @@ export function useBuyArtistTokens() {
 
   const buy = async (params: {
     artistId: number;
-    ethAmount: string; // ETH amount as string (e.g. "0.01")
-    minTokensOut?: bigint; // Optional slippage protection
+    tokenAmount: bigint; // 18 decimals
+    maxUsdcIn: bigint;   // 6 decimals
   }) => {
     if (!address) {
       throw new Error("Wallet not connected");
     }
 
-    const value = parseEther(params.ethAmount);
-    const minTokens = params.minTokensOut ?? 0n;
-
     writeContract({
-      ...bondingCurveMarketConfig,
+      ...clioMarketConfig,
       functionName: "buy",
-      args: [BigInt(params.artistId), minTokens],
-      value,
+      args: [BigInt(params.artistId), params.tokenAmount, params.maxUsdcIn],
     });
   };
 
@@ -67,8 +63,8 @@ export function useBuyArtistTokens() {
  * const handleSell = async () => {
  *   await sell({
  *     artistId: 1,
- *     tokenAmount: parseUnits("100", 18), // as bigint
- *     minEthOut: parseEther("0.009"), // optional slippage
+ *     tokenAmount: parseUnits("100", 18), // tokens to burn
+ *     minUsdcOut: parseUnits("9", 6), // optional slippage in USDC
  *   });
  * };
  * ```
@@ -83,18 +79,16 @@ export function useSellArtistTokens() {
   const sell = async (params: {
     artistId: number;
     tokenAmount: bigint;
-    minEthOut?: bigint; // Optional slippage protection
+    minUsdcOut?: bigint; // Optional slippage protection
   }) => {
     if (!address) {
       throw new Error("Wallet not connected");
     }
 
-    const minEth = params.minEthOut ?? 0n;
-
     writeContract({
-      ...bondingCurveMarketConfig,
+      ...clioMarketConfig,
       functionName: "sell",
-      args: [BigInt(params.artistId), params.tokenAmount, minEth],
+      args: [BigInt(params.artistId), params.tokenAmount, params.minUsdcOut ?? 0n],
     });
   };
 

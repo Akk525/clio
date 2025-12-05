@@ -2,12 +2,19 @@
 
 import type { PublicClient, WalletClient, Address } from "viem";
 import {
-  ARTIST_REGISTRY_ADDRESS,
-  BONDING_CURVE_MARKET_ADDRESS,
-  artistRegistryAbi,
-  bondingCurveMarketAbi,
+  CLIO_REGISTRY_ADDRESS,
+  CLIO_MARKET_ADDRESS,
+  clioRegistryAbi,
+  clioMarketAbi,
   BASE_SEPOLIA_CHAIN_ID,
+  USDC_ADDRESS,
 } from "@/config/contracts";
+import ClioArtistTokenArtifact from "../../contracts/artifacts/contracts/ClioArtistToken.sol/ClioArtistToken.json";
+
+// Re-exports for scripts/tests expecting legacy names
+export const ARTIST_REGISTRY_ABI = clioRegistryAbi;
+export const BONDING_CURVE_MARKET_ABI = clioMarketAbi;
+export const ARTIST_TOKEN_ABI = ClioArtistTokenArtifact.abi;
 
 // ----------------------
 // Types
@@ -18,6 +25,7 @@ export type Artist = {
   token: Address;
   name: string;
   handle: string;
+  active: boolean;
 };
 
 // ----------------------
@@ -30,13 +38,14 @@ export type Artist = {
 export async function getArtistCount(
   publicClient: PublicClient
 ): Promise<bigint> {
-  const count = await publicClient.readContract({
-    address: ARTIST_REGISTRY_ADDRESS,
-    abi: artistRegistryAbi,
-    functionName: "artistCount",
+  // ClioRegistry uses nextArtistId (starts at 0)
+  const nextId = await publicClient.readContract({
+    address: CLIO_REGISTRY_ADDRESS,
+    abi: clioRegistryAbi,
+    functionName: "nextArtistId",
   });
 
-  return count as bigint;
+  return nextId as bigint;
 }
 
 /**
@@ -49,19 +58,20 @@ export async function getArtistById(
   const id = BigInt(artistId);
 
   // Solidity: mapping(uint256 => Artist) public artists;
-  // Getter returns (artistWallet, token, name, handle)
-  const [artistWallet, token, name, handle] = (await publicClient.readContract({
-    address: ARTIST_REGISTRY_ADDRESS,
-    abi: artistRegistryAbi,
+  // Getter returns (artistWallet, token, name, handle, active)
+  const [artistWallet, token, name, handle, active] = (await publicClient.readContract({
+    address: CLIO_REGISTRY_ADDRESS,
+    abi: clioRegistryAbi,
     functionName: "artists",
     args: [id],
-  })) as [Address, Address, string, string];
+  })) as [Address, Address, string, string, boolean];
 
   return {
     artistWallet,
     token,
     name,
     handle,
+    active,
   };
 }
 
@@ -84,22 +94,20 @@ export async function buyArtistTokens(
   walletClient: WalletClient,
   params: {
     artistId: bigint | number;
-    ethIn: bigint;
+    tokenAmount: bigint; // 18 decimals
+    maxUsdcIn: bigint; // 6 decimals
     account: Address;
-    minTokensOut?: bigint;
   }
 ): Promise<`0x${string}`> {
-  const { artistId, ethIn, account } = params;
-  const minTokensOut = params.minTokensOut ?? 0n;
+  const { artistId, tokenAmount, maxUsdcIn, account } = params;
 
   const hash = await walletClient.writeContract({
     account,
     chain: { id: BASE_SEPOLIA_CHAIN_ID } as any,
-    address: BONDING_CURVE_MARKET_ADDRESS,
-    abi: bondingCurveMarketAbi,
+    address: CLIO_MARKET_ADDRESS,
+    abi: clioMarketAbi,
     functionName: "buy",
-    args: [BigInt(artistId), minTokensOut],
-    value: ethIn,
+    args: [BigInt(artistId), tokenAmount, maxUsdcIn],
   });
 
   return hash;
@@ -121,22 +129,85 @@ export async function sellArtistTokens(
   params: {
     artistId: bigint | number;
     tokenAmount: bigint;
-    minEthOut?: bigint;
+    minUsdcOut?: bigint;
     account: Address;
   }
 ): Promise<`0x${string}`> {
   const { artistId, tokenAmount, account } = params;
-  const minEthOut = params.minEthOut ?? 0n;
+  const minUsdcOut = params.minUsdcOut ?? 0n;
 
   const hash = await walletClient.writeContract({
     account,
     chain: { id: BASE_SEPOLIA_CHAIN_ID } as any,
-    address: BONDING_CURVE_MARKET_ADDRESS,
-    abi: bondingCurveMarketAbi,
+    address: CLIO_MARKET_ADDRESS,
+    abi: clioMarketAbi,
     functionName: "sell",
-    args: [BigInt(artistId), tokenAmount, minEthOut],
+    args: [BigInt(artistId), tokenAmount, minUsdcOut],
   });
 
+  return hash;
+}
+
+// ----------------------
+// Quotes
+// ----------------------
+
+export async function quoteBuy(
+  publicClient: PublicClient,
+  artistId: bigint | number,
+  tokenAmount: bigint
+): Promise<{ usdcIn: bigint; fee: bigint; newPriceWad: bigint }> {
+  const [usdcIn, fee, newPriceWad] = (await publicClient.readContract({
+    address: CLIO_MARKET_ADDRESS,
+    abi: clioMarketAbi,
+    functionName: "quoteBuy",
+    args: [BigInt(artistId), tokenAmount],
+  })) as [bigint, bigint, bigint];
+
+  return { usdcIn, fee, newPriceWad };
+}
+
+export async function quoteSell(
+  publicClient: PublicClient,
+  artistId: bigint | number,
+  tokenAmount: bigint
+): Promise<{ usdcOut: bigint; fee: bigint; newPriceWad: bigint }> {
+  const [usdcOut, fee, newPriceWad] = (await publicClient.readContract({
+    address: CLIO_MARKET_ADDRESS,
+    abi: clioMarketAbi,
+    functionName: "quoteSell",
+    args: [BigInt(artistId), tokenAmount],
+  })) as [bigint, bigint, bigint];
+
+  return { usdcOut, fee, newPriceWad };
+}
+
+// ----------------------
+// Approvals (USDC)
+// ----------------------
+
+export async function approveUsdc(
+  walletClient: WalletClient,
+  params: { spender: Address; amount: bigint; account: Address }
+): Promise<`0x${string}`> {
+  const { spender, amount, account } = params;
+  const hash = await walletClient.writeContract({
+    account,
+    chain: { id: BASE_SEPOLIA_CHAIN_ID } as any,
+    address: USDC_ADDRESS,
+    abi: [{
+      inputs: [
+        { internalType: "address", name: "spender", type: "address" },
+        { internalType: "uint256", name: "amount", type: "uint256" },
+      ],
+      name: "approve",
+      outputs: [{ internalType: "bool", name: "", type: "bool" }],
+      stateMutability: "nonpayable",
+      type: "function",
+    }] as const,
+    functionName: "approve",
+    args: [spender, amount],
+  });
   return hash;
 }
 
