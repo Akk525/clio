@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { WalletConnectButton } from "@/components/connect-button";
 
 export default function Home() {
@@ -33,9 +34,16 @@ export default function Home() {
       <div className="max-w-2xl w-full px-6 text-center flex flex-col items-center gap-8 relative z-10">
         {/* Logo / name with WHITE glow (no gradient text) */}
         <div className="space-y-3">
-          <h1 className="glow-text text-5xl sm:text-6xl font-extrabold tracking-tight">
-            Clio
-          </h1>
+          <div className="flex justify-center">
+            <Image
+              src="/clio-logo.png"
+              alt="Clio"
+              width={200}
+              height={80}
+              className="h-16 sm:h-20 w-auto object-contain filter drop-shadow-[0_0_20px_rgba(249,250,251,0.5)] drop-shadow-[0_0_35px_rgba(16,185,129,0.2)]"
+              priority
+            />
+          </div>
           <p className="text-sm sm:text-base text-zinc-300">
             Invest in artist tokens on Base. Discover tomorrow&apos;s headliners before they go mainstream.
           </p>

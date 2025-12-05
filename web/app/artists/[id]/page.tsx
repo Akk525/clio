@@ -173,9 +173,16 @@ export default function ArtistPage({
           <Link href="/artists" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
             ← Back to Artists
           </Link>
-          <div className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-            Clio
-          </div>
+          <Link href="/artists" className="flex items-center">
+            <Image
+              src="/clio-logo.png"
+              alt="Clio"
+              width={100}
+              height={40}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+          </Link>
           <div className="w-20" /> {/* Spacer */}
         </div>
       </header>

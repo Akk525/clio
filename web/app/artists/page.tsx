@@ -14,9 +14,16 @@ function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black via-black/80 to-transparent backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="text-3xl font-black bg-gradient-to-r from-cyan-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-            Clio
-          </div>
+          <Link href="/artists" className="flex items-center">
+            <Image
+              src="/clio-logo.png"
+              alt="Clio"
+              width={120}
+              height={48}
+              className="h-8 sm:h-10 w-auto object-contain"
+              priority
+            />
+          </Link>
           <span className="hidden sm:inline text-xs px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium">
             on Base Sepolia
           </span>
