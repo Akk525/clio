@@ -46,14 +46,14 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
   if (isHero) {
     return (
       <Link href={`/artists/${artist.id}`}>
-        <div className="relative overflow-hidden rounded-2xl h-96 sm:h-[500px] group cursor-pointer">
+        <div className="relative overflow-hidden rounded-2xl h-96 sm:h-[500px] group/hero cursor-pointer">
           {/* Background image */}
           <div className="absolute inset-0 w-full h-full">
             <Image
               src={artist.imageUrl}
               alt={artist.name}
               fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover transition-transform duration-300 group-hover/hero:scale-105"
               priority
             />
           </div>
@@ -62,7 +62,7 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
           {/* Animated glow background */}
-          <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-gradient-to-bl from-pink-500/20 to-transparent rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-gradient-to-bl from-pink-500/20 to-transparent rounded-full blur-3xl opacity-0 group-hover/hero:opacity-100 transition-opacity duration-500" />
 
           {/* Content */}
           <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10">
@@ -113,19 +113,19 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
 
   return (
     <Link href={`/artists/${artist.id}`}>
-      <div className="group relative overflow-hidden rounded-lg cursor-pointer flex-shrink-0">
+      <div className="group/card relative overflow-hidden rounded-lg cursor-pointer flex-shrink-0">
         {/* Image */}
         <div className="relative w-full h-40 sm:h-52 rounded-lg overflow-hidden">
           <Image
             src={artist.imageUrl}
             alt={artist.name}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover/card:scale-105"
           />
         </div>
 
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity duration-300 rounded-lg" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover/card:opacity-95 transition-opacity duration-300 rounded-lg" />
 
         {/* Content below image */}
         <div className="mt-3 space-y-1">
@@ -151,10 +151,10 @@ function ArtistCard({ artist, isHero = false }: ArtistCardProps) {
         </div>
 
         {/* Border glow on hover */}
-        <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-cyan-400/50 transition-colors duration-300 pointer-events-none" />
+        <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-cyan-400/50 transition-colors duration-300 pointer-events-none" />
 
         {/* Shadow lift */}
-        <div className="absolute -inset-1 bg-gradient-to-br from-pink-500/20 to-cyan-500/20 rounded-lg blur opacity-0 group-hover:opacity-50 -z-10 transition-opacity duration-300" />
+        <div className="absolute -inset-1 bg-gradient-to-br from-pink-500/20 to-cyan-500/20 rounded-lg blur opacity-0 group-hover/card:opacity-50 -z-10 transition-opacity duration-300" />
       </div>
     </Link>
   );
@@ -181,7 +181,7 @@ function ArtistRow({ title, artists, subtitle }: ArtistRowProps) {
       </div>
 
       {/* Horizontal scroll container */}
-      <div className="relative group">
+      <div className="relative group/row">
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 sm:gap-4 pb-4 px-4 sm:px-0">
             {artists.map((artist) => (
@@ -193,16 +193,44 @@ function ArtistRow({ title, artists, subtitle }: ArtistRowProps) {
         </div>
 
         {/* Left fade */}
-        <div className="absolute top-0 left-0 bottom-4 w-8 bg-gradient-to-r from-black via-black to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute top-0 left-0 bottom-4 w-8 bg-gradient-to-r from-black via-black to-transparent pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity duration-300" />
 
         {/* Right fade */}
-        <div className="absolute top-0 right-0 bottom-4 w-8 bg-gradient-to-l from-black via-black to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute top-0 right-0 bottom-4 w-8 bg-gradient-to-l from-black via-black to-transparent pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity duration-300" />
       </div>
     </div>
   );
 }
 
 type SortOption = 'trending' | 'volume' | 'gainers' | 'new';
+
+const SORT_OPTIONS: Record<SortOption, { label: string; description: string }> = {
+  trending: { label: 'Trending', description: 'Market cap momentum' },
+  volume: { label: 'Top Volume', description: 'Most traded in 24h' },
+  gainers: { label: 'Biggest Gainers', description: 'Largest % moves' },
+  new: { label: 'New', description: 'Recently listed artists' },
+};
+
+interface StatHighlightsProps {
+  stats: Array<{ label: string; value: string; hint: string }>;
+}
+
+function StatHighlights({ stats }: StatHighlightsProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-[0_20px_50px_rgba(15,15,30,0.4)]"
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-2">{stat.label}</p>
+          <p className="text-2xl sm:text-3xl font-black text-white">{stat.value}</p>
+          <p className="text-sm text-gray-500 mt-1">{stat.hint}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ============================================================================
 // MAIN PAGE
@@ -211,6 +239,25 @@ type SortOption = 'trending' | 'volume' | 'gainers' | 'new';
 export default function ArtistsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('trending');
+  const [genreFilter, setGenreFilter] = useState<string>('all');
+
+  const genreFilters = useMemo(() => {
+    const uniqueGenres = Array.from(new Set(MOCK_ARTISTS.map((artist) => artist.genre))).filter(Boolean);
+    return ['all', ...uniqueGenres.map((genre) => genre.toLowerCase())];
+  }, []);
+
+  const summaryStats = useMemo(() => {
+    const totalVolume = MOCK_ARTISTS.reduce((sum, artist) => sum + artist.volume24h, 0);
+    const avgChange = MOCK_ARTISTS.reduce((sum, artist) => sum + artist.change24h, 0) / MOCK_ARTISTS.length;
+    const hottest = [...MOCK_ARTISTS].sort((a, b) => b.change24h - a.change24h)[0];
+
+    return [
+      { label: 'Artists Live', value: `${MOCK_ARTISTS.length}`, hint: 'Ready to trade now' },
+      { label: '24h Volume', value: `Ξ ${totalVolume.toFixed(1)}`, hint: 'Combined secondary flow' },
+      { label: 'Avg. Move', value: `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(1)}%`, hint: 'Net change across markets' },
+      { label: 'Top Mover', value: hottest ? hottest.name : '—', hint: hottest ? `${hottest.change24h.toFixed(1)}% today` : 'Waiting for listings' },
+    ];
+  }, []);
 
   // Filter and sort artists
   const filteredAndSorted = useMemo(() => {
@@ -221,6 +268,10 @@ export default function ArtistsPage() {
         artist.handle.toLowerCase().includes(query)
       );
     });
+
+    if (genreFilter !== 'all') {
+      filtered = filtered.filter((artist) => artist.genre.toLowerCase() === genreFilter);
+    }
 
     // Sort based on sortOption
     const sorted = [...filtered].sort((a, b) => {
@@ -239,7 +290,7 @@ export default function ArtistsPage() {
     });
 
     return sorted;
-  }, [searchQuery, sortOption]);
+  }, [searchQuery, sortOption, genreFilter]);
 
   // Get featured hero artist (top by market cap + volume)
   const heroArtist = useMemo(() => {
@@ -251,12 +302,16 @@ export default function ArtistsPage() {
 
   // Get row data from filtered/sorted list
   const trendingArtists = filteredAndSorted.slice(0, 6);
-  const newArtists = filteredAndSorted
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 6);
-  const risingArtists = filteredAndSorted
-    .sort((a, b) => b.change24h - a.change24h)
-    .slice(0, 6);
+  const newArtists = useMemo(() => {
+    return [...filteredAndSorted]
+      .sort((a, b) => b.id - a.id)
+      .slice(0, 6);
+  }, [filteredAndSorted]);
+  const risingArtists = useMemo(() => {
+    return [...filteredAndSorted]
+      .sort((a, b) => b.change24h - a.change24h)
+      .slice(0, 6);
+  }, [filteredAndSorted]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#050509] via-black to-black overflow-hidden">
@@ -268,37 +323,77 @@ export default function ArtistsPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-cyan-500/5 to-transparent rounded-full blur-3xl" />
       </div>
 
-      {/* Main content */}
-      <main className="relative z-10 max-w-7xl mx-auto pt-24 pb-16">
-        {/* Search and Sort Toolbar */}
-        <section className="px-4 sm:px-6 lg:px-8 mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Search input */}
-            <input
-              type="text"
-              placeholder="Search artists or handles…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-80 px-4 py-2.5 bg-black/50 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
-            />
+        {/* Main content */}
+        <main className="relative z-10 max-w-7xl mx-auto pt-24 pb-16">
 
-            {/* Sort dropdown */}
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="px-4 py-2.5 bg-black/50 border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
-            >
-              <option value="trending">Trending</option>
-              <option value="volume">Top Volume</option>
-              <option value="gainers">Biggest Gainers</option>
-              <option value="new">New</option>
-            </select>
+          {/* Hero section */}
+          <section className="px-4 sm:px-6 lg:px-8 mb-12 sm:mb-20">
+            <div className="mb-4">
+          <p className="text-xs uppercase tracking-[0.4em] text-cyan-400 font-semibold mb-2">Featured</p>
+          <h2 className="text-2xl sm:text-3xl font-black text-white">Top Artist</h2>
+            </div>
+            <ArtistCard artist={heroArtist} isHero />
+          </section>
+
+          {/* Search and summary */}
+          <section className="px-4 sm:px-6 lg:px-8 mb-10 space-y-8">
+            <div className="bg-black/40 border border-white/10 rounded-3xl p-6 sm:p-8 backdrop-blur-xl">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-gray-500">Discovery</p>
+                  <h1 className="text-3xl sm:text-4xl font-black text-white">Browse live bonding-curve markets</h1>
+                  <p className="text-sm text-gray-400 max-w-2xl mt-2">
+                    Filter by genre, sort by momentum, and jump into the markets that fit your thesis.
+                  </p>
+                </div>
+                <div className="w-full lg:w-auto">
+                  <input
+                    type="text"
+                    placeholder="Search artists or handles…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full lg:w-80 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:border-cyan-500/60 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {genreFilters.map((genre) => (
+                    <button
+                      key={genre}
+                      onClick={() => setGenreFilter(genre)}
+                      className={`px-3 py-1.5 rounded-full text-xs tracking-wide border transition-colors ${
+                        genreFilter === genre
+                          ? 'border-cyan-400/80 bg-cyan-400/10 text-cyan-100'
+                          : 'border-white/10 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {genre === 'all' ? 'All Genres' : genre.replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(SORT_OPTIONS) as SortOption[]).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setSortOption(option)}
+                      className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                        sortOption === option
+                          ? 'bg-white text-black border-transparent'
+                          : 'border-white/10 text-gray-300 hover:border-cyan-400/40 hover:text-white'
+                      }`}
+                    >
+                      {SORT_OPTIONS[option].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
 
-        {/* Hero section */}
-        <section className="px-4 sm:px-6 lg:px-8 mb-12 sm:mb-20">
-          <ArtistCard artist={heroArtist} isHero />
+          <StatHighlights stats={summaryStats} />
         </section>
 
         {/* Artist rows */}
