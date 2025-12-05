@@ -7,7 +7,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:studio": "prisma studio",
+    "prisma:generate": "prisma generate",
+    "db:test": "tsx scripts/test-db.ts",
+    "db:inspect": "tsx scripts/inspect-db.ts",
+    "db:clear": "tsx scripts/clear-test-data.ts",
+    "badge:test": "tsx scripts/test-badge-engine.ts"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -28,14 +36,20 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.28.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "@prisma/client": "^5.9.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.0"
+    "eslint-config-next": "^14.2.0",
+    "prisma": "^5.9.0",
+    "tsx": "^4.7.0"
   },
   "overrides": {
     "glob": ">=10.4.6"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
 
