@@ -139,3 +139,44 @@ export async function sellArtistTokens(
 
   return hash;
 }
+
+// ----------------------
+// Utility functions (from social_layer)
+// ----------------------
+
+/**
+ * Format token amount for display (18 decimals)
+ */
+export function formatTokenAmount(amount: bigint): string {
+  const formatted = Number(amount) / 1e18
+  return formatted.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  })
+}
+
+/**
+ * Format ETH amount for display
+ */
+export function formatEth(amount: bigint): string {
+  const formatted = Number(amount) / 1e18
+  return formatted.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  }) + ' ETH'
+}
+
+/**
+ * Calculate artist fee (3%)
+ */
+export function calculateArtistFee(amount: bigint): bigint {
+  return (amount * 300n) / 10_000n
+}
+
+/**
+ * Calculate tokens received after fee
+ */
+export function calculateTokensOut(ethAmount: bigint): bigint {
+  const fee = calculateArtistFee(ethAmount)
+  return ethAmount - fee // 1 wei = 1 token after fee
+}

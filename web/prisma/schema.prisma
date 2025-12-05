@@ -1,0 +1,70 @@
+// Prisma Schema for Clio Artist Market Social Layer
+// Database: SQLite (local development)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Artist {
+  artistId     Int      @id        // from ArtistRegistry
+  tokenAddress String   @unique
+  name         String
+  handle       String
+  genre        String?  // "pop", "rap", etc.
+  createdAt    DateTime @default(now())
+
+  holders    ArtistHolder[]
+  stats      ArtistStats[]
+  userBadges UserBadge[]
+}
+
+model ArtistHolder {
+  artistId      Int
+  userAddress   String
+  firstBuyBlock Int
+  firstBuyTime  DateTime
+  isEarly50     Boolean  @default(false)
+
+  artist Artist @relation(fields: [artistId], references: [artistId])
+
+  @@id([artistId, userAddress])
+}
+
+model ArtistStats {
+  id          Int      @id @default(autoincrement())
+  artistId    Int
+  blockNumber Int
+  price       String   // Using String for Decimal in SQLite
+  holderCount Int
+  createdAt   DateTime
+
+  artist Artist @relation(fields: [artistId], references: [artistId])
+}
+
+model Badge {
+  badgeId     String  @id        // e.g. "PROMETHEAN_BACKER"
+  displayName String
+  description String
+
+  userBadges UserBadge[]
+}
+
+model UserBadge {
+  id          Int      @id @default(autoincrement())
+  userAddress String
+  badgeId     String
+  artistId    Int?     // null for global badges like MUSE_WANDERER
+  awardedAt   DateTime @default(now())
+  meta        String?  // Using String for Json in SQLite
+
+  badge  Badge   @relation(fields: [badgeId], references: [badgeId])
+  artist Artist? @relation(fields: [artistId], references: [artistId])
+
+  @@unique([userAddress, badgeId, artistId])
+}
+
