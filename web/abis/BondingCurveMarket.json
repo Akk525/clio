@@ -1,0 +1,39 @@
+[
+  {
+    "type": "event",
+    "name": "Bought",
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "artistId",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "buyer",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "tokenAmount",
+        "indexed": false
+      },
+      {
+        "type": "uint256",
+        "name": "cost",
+        "indexed": false
+      },
+      {
+        "type": "uint256",
+        "name": "newSupply",
+        "indexed": false
+      },
+      {
+        "type": "uint256",
+        "name": "newPrice",
+        "indexed": false
+      }
+    ]
+  }
+]
+

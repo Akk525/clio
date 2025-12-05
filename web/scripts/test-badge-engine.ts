@@ -209,7 +209,7 @@ async function main() {
       where: {
         badgeId: 'MUSE_WANDERER',
         userAddress: museLover.toLowerCase(),
-        artistId: null,
+        artistId: undefined,
       },
     })
     console.log(`\n✅ Result: ${museBadges} MUSE_WANDERER badge(s) (expected: 1)`)

@@ -84,6 +84,27 @@ async function updateArtistHolders(
   blockNumber: number,
   timestamp: Date
 ): Promise<number> {
+  // Ensure artist exists (auto-create if from blockchain event)
+  const artist = await prisma.artist.findUnique({
+    where: { artistId }
+  })
+
+  if (!artist) {
+    // Auto-create artist if it doesn't exist
+    // In production, this would come from ArtistRegistry events
+    await prisma.artist.create({
+      data: {
+        artistId,
+        tokenAddress: `0x${artistId.toString(16).padStart(40, '0')}`, // Placeholder
+        name: `Artist ${artistId}`,
+        handle: `@artist${artistId}`,
+        genre: null,
+        createdAt: timestamp,
+      },
+    })
+    console.log(`   ℹ️  Auto-created artist ${artistId} (will be updated from ArtistRegistry)`)
+  }
+
   // Check if holder already exists
   const existingHolder = await prisma.artistHolder.findUnique({
     where: {
@@ -169,23 +190,26 @@ async function checkPrometheanBacker(
   if (holderCount > 5) return
 
   try {
-    await prisma.userBadge.upsert({
+    // Check if badge already exists
+    const existing = await prisma.userBadge.findFirst({
       where: {
-        userAddress_badgeId_artistId: {
-          userAddress: buyer,
-          badgeId: 'PROMETHEAN_BACKER',
-          artistId,
-        },
-      },
-      update: {}, // Already exists, do nothing
-      create: {
         userAddress: buyer,
         badgeId: 'PROMETHEAN_BACKER',
         artistId,
-        meta: JSON.stringify({ holderRank: holderCount }),
       },
     })
-    console.log(`      🏆 Awarded PROMETHEAN_BACKER to ${buyer.substring(0, 10)}...`)
+
+    if (!existing) {
+      await prisma.userBadge.create({
+        data: {
+          userAddress: buyer,
+          badgeId: 'PROMETHEAN_BACKER',
+          artistId,
+          meta: JSON.stringify({ holderRank: holderCount }),
+        },
+      })
+      console.log(`      🏆 Awarded PROMETHEAN_BACKER to ${buyer.substring(0, 10)}...`)
+    }
   } catch (error) {
     // Likely duplicate, ignore
     console.log(`      ℹ️  PROMETHEAN_BACKER already awarded to ${buyer.substring(0, 10)}...`)
@@ -234,26 +258,29 @@ async function checkOracleOfRises(
   // Award badge to each early holder
   for (const holder of earlyHolders) {
     try {
-      await prisma.userBadge.upsert({
+      // Check if badge already exists
+      const existing = await prisma.userBadge.findFirst({
         where: {
-          userAddress_badgeId_artistId: {
-            userAddress: holder.userAddress,
-            badgeId: 'ORACLE_OF_RISES',
-            artistId,
-          },
-        },
-        update: {},
-        create: {
           userAddress: holder.userAddress,
           badgeId: 'ORACLE_OF_RISES',
           artistId,
-          meta: JSON.stringify({
-            crossedAt: currentHolderCount,
-            earlyRank: holder.firstBuyBlock,
-          }),
         },
       })
-      console.log(`      🏆 Awarded ORACLE_OF_RISES to ${holder.userAddress.substring(0, 10)}...`)
+
+      if (!existing) {
+        await prisma.userBadge.create({
+          data: {
+            userAddress: holder.userAddress,
+            badgeId: 'ORACLE_OF_RISES',
+            artistId,
+            meta: JSON.stringify({
+              crossedAt: currentHolderCount,
+              earlyRank: holder.firstBuyBlock,
+            }),
+          },
+        })
+        console.log(`      🏆 Awarded ORACLE_OF_RISES to ${holder.userAddress.substring(0, 10)}...`)
+      }
     } catch (error) {
       // Likely duplicate, continue
     }
@@ -304,28 +331,31 @@ async function checkNereidNavigator(
 
   if (ratio <= 0.85) {
     try {
-      await prisma.userBadge.upsert({
+      // Check if badge already exists
+      const existing = await prisma.userBadge.findFirst({
         where: {
-          userAddress_badgeId_artistId: {
-            userAddress: buyer,
-            badgeId: 'NEREID_NAVIGATOR',
-            artistId,
-          },
-        },
-        update: {},
-        create: {
           userAddress: buyer,
           badgeId: 'NEREID_NAVIGATOR',
           artistId,
-          meta: JSON.stringify({
-            priceBefore: priceOneHourAgo.toString(),
-            priceAfter: currentPrice.toString(),
-            ratio: ratio.toFixed(4),
-            dipPercent: ((1 - ratio) * 100).toFixed(2),
-          }),
         },
       })
-      console.log(`      🏆 Awarded NEREID_NAVIGATOR to ${buyer.substring(0, 10)}... (bought during ${((1 - ratio) * 100).toFixed(1)}% dip)`)
+
+      if (!existing) {
+        await prisma.userBadge.create({
+          data: {
+            userAddress: buyer,
+            badgeId: 'NEREID_NAVIGATOR',
+            artistId,
+            meta: JSON.stringify({
+              priceBefore: priceOneHourAgo.toString(),
+              priceAfter: currentPrice.toString(),
+              ratio: ratio.toFixed(4),
+              dipPercent: ((1 - ratio) * 100).toFixed(2),
+            }),
+          },
+        })
+        console.log(`      🏆 Awarded NEREID_NAVIGATOR to ${buyer.substring(0, 10)}... (bought during ${((1 - ratio) * 100).toFixed(1)}% dip)`)
+      }
     } catch (error) {
       // Likely duplicate
     }
@@ -372,7 +402,7 @@ async function checkMuseWanderer(buyer: string): Promise<void> {
         where: {
           userAddress: buyer,
           badgeId: 'MUSE_WANDERER',
-          artistId: null, // Global badge
+          artistId: undefined, // Global badge
         },
       })
 
@@ -381,7 +411,7 @@ async function checkMuseWanderer(buyer: string): Promise<void> {
           data: {
             userAddress: buyer,
             badgeId: 'MUSE_WANDERER',
-            artistId: null, // Global badge
+            artistId: undefined, // Global badge
             meta: JSON.stringify({
               genreCount,
               genres: Array.from(uniqueGenres),
@@ -420,27 +450,30 @@ async function checkTitanOfSupport(
   // Award if 1% or more
   if (share >= 0.01) {
     try {
-      await prisma.userBadge.upsert({
+      // Check if badge already exists
+      const existing = await prisma.userBadge.findFirst({
         where: {
-          userAddress_badgeId_artistId: {
-            userAddress: buyer,
-            badgeId: 'TITAN_OF_SUPPORT',
-            artistId,
-          },
-        },
-        update: {},
-        create: {
           userAddress: buyer,
           badgeId: 'TITAN_OF_SUPPORT',
           artistId,
-          meta: JSON.stringify({
-            sharePercent: sharePercent.toFixed(4),
-            tokenAmount: tokenAmount.toString(),
-            totalSupply: newSupply.toString(),
-          }),
         },
       })
-      console.log(`      🏆 Awarded TITAN_OF_SUPPORT to ${buyer.substring(0, 10)}... (${sharePercent.toFixed(2)}% share)`)
+
+      if (!existing) {
+        await prisma.userBadge.create({
+          data: {
+            userAddress: buyer,
+            badgeId: 'TITAN_OF_SUPPORT',
+            artistId,
+            meta: JSON.stringify({
+              sharePercent: sharePercent.toFixed(4),
+              tokenAmount: tokenAmount.toString(),
+              totalSupply: newSupply.toString(),
+            }),
+          },
+        })
+        console.log(`      🏆 Awarded TITAN_OF_SUPPORT to ${buyer.substring(0, 10)}... (${sharePercent.toFixed(2)}% share)`)
+      }
     } catch (error) {
       // Likely duplicate
     }
@@ -452,7 +485,7 @@ async function checkTitanOfSupport(
  */
 export async function getUserBadgesForArtist(
   userAddress: string,
-  artistId: number | null
+  artistId: number | undefined
 ) {
   const badges = await prisma.userBadge.findMany({
     where: {
@@ -485,10 +518,12 @@ export async function getAllUserBadges(userAddress: string) {
 /**
  * Helper: Get all badge holders for a specific badge and artist
  */
-export async function getBadgeHolders(badgeId: string, artistId?: number | null) {
-  const where = artistId !== undefined
-    ? { badgeId, artistId }
-    : { badgeId }
+export async function getBadgeHolders(badgeId: string, artistId?: number) {
+  const where: { badgeId: string; artistId?: number } = { badgeId }
+  
+  if (artistId !== undefined) {
+    where.artistId = artistId
+  }
 
   const holders = await prisma.userBadge.findMany({
     where,

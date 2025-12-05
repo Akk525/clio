@@ -15,7 +15,11 @@
     "db:test": "tsx scripts/test-db.ts",
     "db:inspect": "tsx scripts/inspect-db.ts",
     "db:clear": "tsx scripts/clear-test-data.ts",
-    "badge:test": "tsx scripts/test-badge-engine.ts"
+    "badge:test": "tsx scripts/test-badge-engine.ts",
+    "indexer": "tsx scripts/startIndexer.ts",
+    "indexer:dev": "tsx watch scripts/startIndexer.ts",
+    "indexer:test": "tsx scripts/test-indexer.ts",
+    "api:test": "tsx scripts/test-api.ts"
   },
   "dependencies": {
     "next": "^14.2.0",
