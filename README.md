@@ -151,25 +151,6 @@ Future work includes **self-service artist registration** from the UI.
 
 ---
 
-## Repository Structure
-
-```txt
-.
-├── contracts/         # Hardhat project for Clio smart contracts
-│   ├── contracts/     # Solidity contracts (ArtistRegistry, ArtistToken, BondingCurveMarket, Badges, etc.)
-│   ├── scripts/       # Deployment & utility scripts
-│   ├── test/          # Hardhat tests
-│   └── hardhat.config.ts
-└── web/               # Next.js 13+ (App Router) frontend
-    ├── app/           # Route handlers & pages
-    ├── components/    # Shared UI components
-    ├── lib/           # Contract helpers, config, hooks
-    ├── public/        # Static assets
-    ├── styles/        # Tailwind styles
-    └── next.config.mjs
-
-
-Getting Started
 Prerequisites
 
 Node.js (LTS recommended, e.g. 18+)
@@ -204,8 +185,7 @@ To run everything together:
 # From project root
 npm run dev
 
-
-Available scripts:
+Available Scripts
 
 npm run dev – Runs both contracts (Hardhat in watch/test mode) and web concurrently.
 
@@ -215,9 +195,11 @@ npm run dev:contracts – Runs Hardhat tests in watch mode (or dev workflow, dep
 
 From within contracts/:
 
-npx hardhat test – Run contract tests.
+npx hardhat test
+# Run contract tests
 
-npx hardhat run scripts/deploy.ts --network baseSepolia – Example deployment command (adjust as needed).
+npx hardhat run scripts/deploy.ts --network baseSepolia
+# Example deployment command (adjust as needed)
 
 Environment Variables
 
@@ -252,7 +234,7 @@ Core responsibilities:
 
 registerArtist(...)
 
-getArtistToken(address artist) (or by ID, depending on implementation).
+getArtistToken(...) (by address or ID, depending on implementation)
 
 ArtistToken.sol
 
@@ -270,9 +252,9 @@ buyArtistTokens(artistId, amountIn)
 
 sellArtistTokens(artistId, amountOut)
 
-Pricing helpers (e.g. getBuyPrice, getSellReturn).
+Pricing helpers like getBuyPrice, getSellReturn.
 
-Currently uses a simple pricing scheme suitable for hackathon demos; structured for future upgrade.
+Currently uses a simple pricing scheme suitable for hackathon demos; structured so the curve math can be upgraded later.
 
 (Optional / WIP) Badge / Reputation Contracts
 
@@ -284,11 +266,11 @@ Or offchain / hybrid, surfaced via UI for now.
 
 For MBC, at least one end-to-end flow is implemented:
 
-Buying a specific artist token → Promethean Backer badge + perk in the UI.
+Buying a specific artist token → PROMETHEAN_BACKER badge + associated perk in the UI.
 
 Frontend
 
-The Next.js app (web/) focuses on a simple, judge-friendly UX:
+The Next.js app (web/) focuses on a simple, judge-friendly UX.
 
 Stack
 
@@ -302,7 +284,7 @@ shadcn/ui components
 
 wagmi + RainbowKit for wallet connection
 
-Key screens
+Key Screens
 
 Home / Discover
 
@@ -310,9 +292,9 @@ List of artists with live pricing from the bonding curve.
 
 Artist Detail
 
-Token price
+Token price.
 
-Supply / reserve data (where available)
+Supply / reserve data (where available).
 
 Buy / sell actions.
 
@@ -327,7 +309,6 @@ Perks / Early Access
 Example: After earning PROMETHEAN_BACKER, the user sees a special “early access podcast” section tied to that badge.
 
 Hackathon Notes & Roadmap
-
 Built for MBC Hackathon (Base + Circle)
 
 Base L2 alignment
@@ -354,13 +335,13 @@ Generalize the badge engine:
 
 Onchain soulbound badges.
 
-More nuanced rules: time of entry, conviction, holding periods, drawdowns.
+Nuanced rules: time of entry, conviction, holding periods, drawdowns.
 
 Self-service artist onboarding, with:
 
 Social verification.
 
-Fair initial conditions for the bonding curve.
+Fair initial conditions for bonding curves.
 
 Richer analytics:
 
@@ -372,5 +353,5 @@ Full Circle integration:
 
 USDC-native markets on Base.
 
-Fiat on- / off-ramps for fans who are not crypto-native.
+Fiat on- / off-ramps for non-crypto-native fans.
 
